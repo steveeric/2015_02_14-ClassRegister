@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/2015_01_23 MySQL"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/2015_01_29 Util"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/2015_02_04 Log"/>
+	<classpathentry kind="lib" path="C:/Users/scr/workspace/2015_01_23 Libray/lib/jenkov-butterfly-persistence-5.2.0.jar"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/2015_02_13 Sit &amp; go Config"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/2015_01_23 MyTime"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/2015_01_23 Id_Generator"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>
