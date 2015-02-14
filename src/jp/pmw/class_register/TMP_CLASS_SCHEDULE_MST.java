@@ -79,10 +79,75 @@ public class TMP_CLASS_SCHEDULE_MST {
 		 this.campusName = campusName;
 	}
 	public void setROOM_NAME(String roomName){
-		 this.roomName = campusName;
+		 this.roomName = roomName;
 	}
 	public void setCOMPLETE_FLAG(int cmpFlag){
 		this.comleteFlag = cmpFlag;
+	}
+
+
+
+
+	public String getTMP_RANDOM_NO(){
+		return this.tmpRandomNo;
+	}
+
+	public String getUNIVERSITY_NAME(){
+		 return this.universityName;
+	}
+	public String getDEPT_NAME(){
+		 return this.deptName;
+	}
+	public String getMAJOR_NAME(){
+		return this.majorName;
+	}
+	public String getGRADE(){
+		 return this.grade;
+	}
+	public String getYEAR(){
+		 return this.year;
+	}
+	public String getSEMESTER(){
+		 return this.semester;
+	}
+	public String getDAY_NAME(){
+		 return this.dayName;
+	}
+	public String getTIME_SECTION(){
+		 return this.timeSection;
+	}
+	public String getTIMETABLE_NAME(){
+		 return this.timetableName;
+	}
+	public String getCLASS_START_TIME(){
+		 return this.classStartTime;
+	}
+	public String getCLASS_END_TIME(){
+		 return this.classEndTime;
+	}
+	public String getSUBJECT_NUMBER(){
+		 return this.subjectNumber;
+	}
+	public String getSUBJECT_NAME(){
+		 return this.subjectName;
+	}
+	public String getSUBJECT_REMARKS(){
+		 return this.subjectRemarks;
+	}
+	public String getFACULTY_ID_NUMBER(){
+		 return this.facultyIdNumber;
+	}
+	public String getNot_OVERLAP_NAME(){
+		 return this.notOverlapName;
+	}
+	public String getCAMPUS_NAME(){
+		 return this.campusName;
+	}
+	public String getROOM_NAME(){
+		 return this.roomName;
+	}
+	public int getCOMPLETE_FLAG(){
+		return this.comleteFlag;
 	}
 }
 

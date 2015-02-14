@@ -63,7 +63,7 @@ public class ClassRegister {
 	 **/
 	private void oneItemProcess() throws SQLException, PersistenceException{
 		PersistenceManager manager = new PersistenceManager();
-		IDaos daos = manager.createDaos(Connect.getInstance().getConnection());
+		IDaos daos = manager.createDaos(Connect.getInstance().getConnection());;
 		for(int i=0; i<this.tmpList.size(); i++){
 			//1件の授業を膨らます.
 			boolean b = registOneData(tmpList.get(i));
@@ -72,7 +72,10 @@ public class ClassRegister {
 			}else{
 				tmpList.get(i).setCOMPLETE_FLAG(1);
 				//更新
-				daos.getObjectDao().update(tmpList.get(i));
+				int reuslt = daos.getObjectDao().update(tmpList.get(i));
+				if(reuslt != 1){
+					MyLog.getInstance().error("TMP_CLASS_SCHEDULE_MSTの使用済み処理が行えませんでした.TMP乱数:"+tmpList.get(i).tmpRandomNo);
+				}
 			}
 		}
 	}
@@ -147,25 +150,27 @@ public class ClassRegister {
 		//年度と学期と曜日
 		//アカデミックカレンダーのID群を取得する.
 		List<String> acList = getAcademicCalendarIds(deptId,year,semester,dayName);
-		if(acList.size() > 0){
-			MyLog.getInstance().info("学科ID:"+deptId+",西暦:"+year+",学期名:"+semester+",曜日名:"+dayName+"から、「"+"」件の学年歴を取得できました.");
-		}else{
+		if(acList.size() == 0){
 			//処理に失敗したのでr-るバック
 			MyLog.getInstance().info("学年歴を取得できませんでした. "+"学科ID:"+deptId+",西暦:"+year+",学期名:"+semester+",曜日名:"+dayName);
 			Connect.getInstance().getConnection().rollback();
 			return false;
 		}
 
+		MyLog.getInstance().info("学科ID:"+deptId+",西暦:"+year+",学期名:"+semester+",曜日名:"+dayName+"から、「"+acList.size()+"」件の学年歴を取得できました.");
+
+
 		//教員情報取得
 		String facultyId = null;
-		if(facultyIdNumber != null){
-			//大学独自の教員ID番号入力値があった場合
+		//if(facultyIdNumber != null || (!(facultyIdNumber.equals(""))) ){
+		if( (!(facultyIdNumber.equals(""))) ){
+		//大学独自の教員ID番号入力値があった場合
 			facultyId = convertFacultyIdFromFacultyIdNumber(deptId,facultyIdNumber);
 		}else if(notOverlapName != null){
 			facultyId = convertFacultyIdFromNotOverlapName(notOverlapName);
 		}
 
-		if(facultyId == null){
+		if(facultyId == null || facultyId.equals("")){
 			//処理に失敗したのでr-るバック
 			MyLog.getInstance().error("教員ID番号がありません.");
 			Connect.getInstance().getConnection().rollback();
@@ -187,9 +192,14 @@ public class ClassRegister {
 			MyLog.getInstance().error("授業データがDBに登録できませんでした.SQL:"+classSQL);
 			Connect.getInstance().getConnection().rollback();
 			return false;
+		}else if(acList.size() != result){
+			MyLog.getInstance().error("学年暦のサイズ「"+acList.size()+"」と登録授業日のサイズ「"+result+"」が異なります.SQL:"+classSQL);
+			Connect.getInstance().getConnection().rollback();
+			return false;
 		}
+
 		//授業データ正常登録処理をおこないました.
-		MyLog.getInstance().error("「"+acList.size()+"」件の授業データをDBに登録しました."+classSQL);
+		MyLog.getInstance().info("「"+acList.size()+"」件の授業データをDBに登録しました."+classSQL);
 
 		/*何もなければコミットしてね*/
 		Connect.getInstance().getConnection().commit();
@@ -242,7 +252,7 @@ public class ClassRegister {
 			String midSQL = "('0', "+classTotal+", '"+acId+"', '"+timetableId+"', '"+subjectId+"', '"+facultyId+"', '"+roomId+"', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
 
 			sql = sql + midSQL;
-			if(academicCalendars.size() -1 == i){
+			if(academicCalendars.size() -1 != i){
 				sql = sql + ",";
 			}
 		}
@@ -288,7 +298,7 @@ public class ClassRegister {
 		}
 		//教室IDが取得できなかった場合.
 		if(roomId == null){
-			MyLog.getInstance().error("教室IDを取得できませんでした.SQL"+sql);
+			MyLog.getInstance().error("教室IDを取得できませんでした.SQL:"+sql);
 		}
 
 		return roomId;
@@ -337,7 +347,7 @@ public class ClassRegister {
 	private String convertFacultyIdFromFacultyIdNumber(String deptId,String facultyIdNumber) throws SQLException{
 		//教員が複数いた場合
 		String[] facultyIdNumbers = facultyIdNumber.split(MyConfig.SEPARATOR_FACULTY);
-		String facultyId = null;
+		String facultyId = "";
 		for(int i=0;i<facultyIdNumbers.length;i++){
 			facultyId = facultyId + getFacultyIdFromFacultyIdNumber(deptId,facultyIdNumbers[i]);
 			if(facultyIdNumbers.length - 1 != i){
@@ -357,7 +367,7 @@ public class ClassRegister {
 	 * @return String 教員ID
 	 **/
 	private String getFacultyIdFromFacultyIdNumber(String deptId,String facultyIdNumber) throws SQLException{
-		String facultyId = null;
+		String facultyId = "";
 		String sql = "SELECT `FACULTY_ID` FROM `FACULTIES_MST` WHERE `DEPT_ID` LIKE ? AND `FACULTY_ID_NUMBER` LIKE ?";
 		PreparedStatement ps = null;
 		ResultSet rs = null;
@@ -439,7 +449,7 @@ public class ClassRegister {
 	 * @throws SQLException
 	 **/
 	private String registTimetableMst(String deptId,String year,String timeSection,String timetableName,String classStartTime,String classEndTime) throws SQLException{
-		String masterTableName = MyConfig.DB_TABLE_TIMETALBE_MST;
+		String masterTableName = MyConfig.DB_TABLE_TIMETALBES_MST;
 		String timetableId = null;
 
 		//登録数
@@ -521,7 +531,7 @@ public class ClassRegister {
 	 * @throws SQLException
 	 *	 **/
 	private String sarchSameRegistTimetable(String deptId,String year,String timeSection,String timetableName,String classStartTime,String classEndTime) throws SQLException{
-		String masterTableName = MyConfig.DB_TABLE_TIMETALBE_MST;
+		String masterTableName = MyConfig.DB_TABLE_TIMETALBES_MST;
 		String timetableId = null;
 
 		String sql = "SELECT TIMETABLE_ID FROM `"+masterTableName+"` "
@@ -598,9 +608,10 @@ public class ClassRegister {
 	 * @throws SQLException
 	 **/
 	private String serchSameRegistSubject(String deptId,String year,String subjectNumber,String subjectName,String remarks) throws SQLException{
+		String masterTableName = MyConfig.DB_TABLE_SUBJECTS_MST;
 		String subjectId = null;
 
-		String sql = "SELECT SUBJECT_ID FROM `SUBJECTS_MST` "
+		String sql = "SELECT SUBJECT_ID FROM `"+masterTableName+"` "
 				+ "WHERE `DEPT_ID` LIKE ? "
 				+ "AND `ACTIVE_STATUS` = 1 "
 				+ "AND `YEAR` LIKE ? "
@@ -646,7 +657,7 @@ public class ClassRegister {
 	 * @throws SQLException
 	 **/
 	private String registSubjectMst(String deptId,String year,String subjectNumber,String subjectName,String remarks) throws SQLException{
-		String masterTableName = MyConfig.DB_TABLE_SUBJECT_MST;
+		String masterTableName = MyConfig.DB_TABLE_SUBJECTS_MST;
 		String subjectId = null;
 
 		//登録数
