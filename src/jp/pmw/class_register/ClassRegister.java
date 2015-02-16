@@ -20,7 +20,11 @@ public class ClassRegister {
 	//TMPテーブル名
 	private String tmpMstTableName = MyConfig.DB_TABLE_TMP_CLASS_SCHEDULE_MST;
 	//TMP授業時間割リスト
-	List<TMP_CLASS_SCHEDULE_MST> tmpList;
+	private List<TMP_CLASS_SCHEDULE_MST> tmpList;
+	//学科ID
+	private String deptId;
+	//
+	private String subjectId;
 
 	public ClassRegister(){
 		try {
@@ -29,6 +33,7 @@ public class ClassRegister {
 			if(tmpList.size() == 0){
 				//処理するアイテムがない.
 				MyLog.getInstance().info("移行する授業データが存在しません.");
+				return;
 			}else{
 				//取得したTMPデータをふくらませ
 				//CLASSES_MSTテーブルに格納していく.
@@ -70,6 +75,10 @@ public class ClassRegister {
 			if(b==false){
 				MyLog.getInstance().error("TMP乱数:"+tmpList.get(i).tmpRandomNo);
 			}else{
+				//履修登録(仮)
+				registRegistration(tmpList.get(i));
+
+				//処理終了手続き
 				tmpList.get(i).setCOMPLETE_FLAG(1);
 				//更新
 				int reuslt = daos.getObjectDao().update(tmpList.get(i));
@@ -79,6 +88,111 @@ public class ClassRegister {
 			}
 		}
 	}
+
+	/**
+	 * createdate : 2015年2月16日
+	 * registRegistrationメソッド
+	 * 仮履修生を作成します.
+	 * @param TMP_CLASS_SCHEDULE_MST tmpテーブルに格納されているデータ
+	 * @throws SQLException
+	 **/
+	private void registRegistration(TMP_CLASS_SCHEDULE_MST tmp) throws SQLException{
+
+		List<String> students = getClassRegisterStudents(tmp);
+		MyLog.getInstance().info(tmp.subjectName+"は、「"+students.size()+"」名の学生が履修対象学生です.");
+		String registerSQL = createRegistrationSQL(students);
+		Connect.getInstance().getConnection().setAutoCommit(false);
+		int result = insertData(registerSQL);
+		Connect.getInstance().getConnection().commit();
+
+		if(result == 0){
+			MyLog.getInstance().info("SUBJECT_ID:"+this.subjectId+"は履修学生がいませんでした.");
+		}else{
+			MyLog.getInstance().info("「"+result+"」名の学生を、SUBJECT_ID:"+this.subjectId+"で授業履修登録しました.");
+		}
+	}
+
+	private String createRegistrationSQL(List<String> students){
+		String sql = "INSERT INTO `REGISTRATION_MST` (`REGISTRATION_ID`, `STUDENT_ID`, `SUBJECT_ID`, "
+				+ "`REGISTRATION_STATUS`, `REGISTRATION_CANCELLD_TIME`, `RECORED_INSERT_DATE_TIME`, `LAST_UPDATE_TIME`) VALUES ";
+		//('1221', '12', '21', '0', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);";
+
+		for(int i=0;i<students.size();i++){
+			String subId = this.subjectId;
+			String studentId = students.get(i);
+			sql = sql + "('"+studentId+subId+"', '"+studentId+"', '"+subId+"', '0', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
+			if(students.size() - 1 != i){
+				sql = sql + ",";
+			}
+		}
+
+		MyLog.getInstance().info("REGISTRATION_SQL:"+sql);
+
+		return sql;
+	}
+
+	private List<String> getClassRegisterStudents(TMP_CLASS_SCHEDULE_MST tmp) throws SQLException{
+		String sql = createTargetStudentsSQL(tmp);
+		List<String> studentIds = new ArrayList<String>();
+		PreparedStatement ps = null;
+		ResultSet rs = null;
+		try{
+			ps = Connect.getInstance().getConnection().prepareStatement(sql);
+			rs = ps.executeQuery();
+			while(rs.next()){
+				studentIds.add(rs.getString("STUDENT_ID"));
+			}
+		} finally {
+			if(ps != null){
+				ps.close();
+			}
+			if(rs != null){
+				rs.close();
+			}
+		}
+		return studentIds;
+	}
+
+	/**
+	 * createdate : 2015年2月16日
+	 * createRegistrationメソッド
+	 * 仮履修生を取得するSQL分を作成します.
+	 * @param TMP_CLASS_SCHEDULE_MST tmpテーブルに格納されているデータ
+	 * @return SQL
+	 **/
+	private String createTargetStudentsSQL(TMP_CLASS_SCHEDULE_MST tmp){
+		//対象学科
+
+		//対象入学時期
+		String enrollmentPeriod = tmp.getENROLLMENT_PERIOD();
+		//対象入学時期判定
+		int enrollmentPeriodJudge = tmp.getENROLLMENT_PERIOD_JUDGE();
+		//対象学年
+		String grade = tmp.getGRADE();
+
+		String pre = "SELECT STUDENT_ID FROM `STUDENTS_MST` WHERE `DEPT_ID` LIKE '"+this.deptId+"' AND `REGISTRATION_ACTIVE_STATUS` = 1 AND `GRADE` LIKE '"+grade+"' AND ";
+		String enrollmentSQL = "`ENROLLMENT_PERIOD`";
+		if(enrollmentPeriodJudge == 0){
+			//以前
+			enrollmentSQL = enrollmentSQL + "< '"+enrollmentPeriod+"'";
+		}else if(enrollmentPeriodJudge == 1){
+			//専用
+			String [] enrollSplite = getEnrollSplite(enrollmentPeriod);
+			enrollmentSQL = enrollmentSQL + "LIKE '%"+enrollSplite[0]+MyConfig.SEPARATOR_TIME+enrollSplite[1]+"%'";
+		}else if(enrollmentPeriodJudge == 2){
+			//以降
+			String [] enrollSplite = getEnrollSplite(enrollmentPeriod);
+			enrollmentSQL = enrollmentSQL + "> '%"+enrollSplite[0]+MyConfig.SEPARATOR_TIME+enrollSplite[1]+"%'";
+		}
+		String sql = pre + enrollmentSQL;
+		return sql;
+	}
+	//年月火を分ける
+	private String[] getEnrollSplite(String enrollmentPeriod){
+		return enrollmentPeriod.split(MyConfig.SEPARATOR_TIME);
+	}
+
+
 	/**
 	 * createdate : 2015年2月14日
 	 * registOneDataメソッド
@@ -89,7 +203,7 @@ public class ClassRegister {
 	private boolean registOneData(TMP_CLASS_SCHEDULE_MST tmp) throws SQLException{
 		String universityname = tmp.universityName;
 		String deptName = tmp.deptName;
-		String deptId = getDeptId(universityname,deptName);
+		deptId = getDeptId(universityname,deptName);
 		if(deptId == null){
 			return false;
 		}
@@ -119,7 +233,7 @@ public class ClassRegister {
 
 
 		String timetableId = null;
-		String subjectId = null;
+		subjectId = null;
 		//時限調査
 		timetableId = sarchSameRegistTimetable(deptId,year,timeSection,timetableName,classStartTime,classEndTime);
 		if(timetableId == null){
@@ -164,7 +278,7 @@ public class ClassRegister {
 		String facultyId = null;
 		//if(facultyIdNumber != null || (!(facultyIdNumber.equals(""))) ){
 		if( (!(facultyIdNumber.equals(""))) ){
-		//大学独自の教員ID番号入力値があった場合
+			//大学独自の教員ID番号入力値があった場合
 			facultyId = convertFacultyIdFromFacultyIdNumber(deptId,facultyIdNumber);
 		}else if(notOverlapName != null){
 			facultyId = convertFacultyIdFromNotOverlapName(notOverlapName);
@@ -187,7 +301,7 @@ public class ClassRegister {
 		//授業データを一括でインサーチするSQL文を作成する.
 		//インサートする.
 		String classSQL = createInsertClassesMstSQL(acList,timetableId,roomId,facultyId,subjectId);
-		int result = insertClassData(classSQL);
+		int result = insertData(classSQL);
 		if(result == 0){
 			MyLog.getInstance().error("授業データがDBに登録できませんでした.SQL:"+classSQL);
 			Connect.getInstance().getConnection().rollback();
@@ -212,7 +326,7 @@ public class ClassRegister {
 	 * @return result インサート結果
 	 * @throws SQLException
 	 **/
-	private int insertClassData(String sql) throws SQLException{
+	private int insertData(String sql) throws SQLException{
 		int result = 0;
 		PreparedStatement ps = null;
 		ResultSet rs = null;

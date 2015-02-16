@@ -6,6 +6,8 @@ public class TMP_CLASS_SCHEDULE_MST {
 	public String universityName;
 	public String deptName;
 	public String majorName;
+	public String enrollmentPeriod;
+	public int enrollmentPeriodJudge;
 	public String grade;
 	public String year;
 	public String semester;
@@ -36,6 +38,13 @@ public class TMP_CLASS_SCHEDULE_MST {
 	public void setMAJOR_NAME(String majorName){
 		this.majorName = majorName;
 	}
+	public void setENROLLMENT_PERIOD(String enrollmentPeriod){
+		this.enrollmentPeriod = enrollmentPeriod;
+	}
+	public void setENROLLMENT_PERIOD_JUDGE(int enrollmentPeriodJudge){
+		this.enrollmentPeriodJudge =enrollmentPeriodJudge;
+	}
+
 	public void setGRADE(String grade){
 		 this.grade = grade;
 	}
@@ -100,6 +109,12 @@ public class TMP_CLASS_SCHEDULE_MST {
 	}
 	public String getMAJOR_NAME(){
 		return this.majorName;
+	}
+	public String getENROLLMENT_PERIOD(){
+		return this.enrollmentPeriod;
+	}
+	public int getENROLLMENT_PERIOD_JUDGE(){
+		return this.enrollmentPeriodJudge;
 	}
 	public String getGRADE(){
 		 return this.grade;
